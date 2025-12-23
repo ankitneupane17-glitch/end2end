@@ -1,38 +1,42 @@
+import unittest
+import sys
+from xmlrunner import XMLTestRunner
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-import sys
 
-# Configure Headless Chrome
-options = Options()
-options.add_argument("--headless")
-options.add_argument("--no-sandbox")
-options.add_argument("--disable-dev-shm-usage")
+class WebAppTests(unittest.TestCase):
 
-# Default port 8080, can be overridden if your python script accepts args
-target_url = "http://localhost:8080"
+    def setUp(self):
+        # Setup runs before every test
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        # Ensure we connect to the correct port (Jenkins will swap 8080 with 9091)
+        self.target_url = "http://localhost:8080"
+        self.driver = webdriver.Chrome(options=chrome_options)
 
-print(f"Starting E2E Test against {target_url}")
+    def tearDown(self):
+        # Teardown runs after every test
+        self.driver.quit()
 
-try:
-    driver = webdriver.Chrome(options=options)
-    driver.get(target_url)
+    def test_homepage_title(self):
+        """Test that the homepage has the correct welcome text"""
+        self.driver.get(self.target_url)
+        
+        # Find element
+        heading = self.driver.find_element(By.ID, "welcome-message").text
+        print(f"DEBUG: Found heading: {heading}")
+        
+        # Assertions - this is what generates "Pass/Fail" in the report
+        self.assertIn("Welcome to the JDK 21 App", heading, "Heading text did not match!")
 
-    # Find the H1 element by ID
-    heading = driver.find_element(By.ID, "welcome-message").text
-    print(f"Detected Heading: {heading}")
-
-    if "Welcome to the JDK 21 App" in heading:
-        print("SUCCESS: UI Validation Passed")
-        sys.exit(0)
-    else:
-        print("FAILURE: Heading text did not match")
-        sys.exit(1)
-
-except Exception as e:
-    print(f"ERROR: {e}")
-    sys.exit(1)
-
-finally:
-    if 'driver' in locals():
-        driver.quit()
+if __name__ == '__main__':
+    # This generates the 'test-reports' folder with XML files inside
+    unittest.main(
+        testRunner=XMLTestRunner(output='test-reports'),
+        failfast=False,
+        buffer=False,
+        catchbreak=False
+    )
